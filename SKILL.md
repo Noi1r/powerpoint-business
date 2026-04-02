@@ -2,7 +2,7 @@
 name: powerpoint-business
 description: |
   Create visually polished business and humanities PowerPoint presentations using SVG-native generation.
-  LLM generates SVG slides directly (1280x720) — exported as PNG-embedded PPTX or standalone SVG.
+  LLM generates SVG slides directly (1280x720) — exported as editable SVG-embedded PPTX (Office 365+).
   5 specialized agent roles (Consultant → Researcher → Planner → Designer → Reviewer) collaborate
   through a 8-phase pipeline with user approval gates. Bento Grid card layouts, 14 themes
   (10 business + 4 academic/humanities), 206 Lucide SVG icons, 28 chart templates,
@@ -23,7 +23,7 @@ allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Agent", "AskUs
 Business/humanities presentation skill. Full lifecycle:
 analyze → interview → research → outline → plan → draft SVG → design SVG → export.
 
-Execution model: LLM generates SVG (1280x720) per slide → cairosvg renders PNG → python-pptx packages PPTX.
+Execution model: LLM generates SVG (1280x720) per slide → SVG embedded in OOXML PPTX (editable in Office 365+, PNG fallback for older versions).
 Editing: natural language → semantic manifest element lookup → targeted SVG regeneration.
 
 ---
@@ -182,7 +182,7 @@ Output: `slides/slide-{nn}.svg` + `slide-manifest.json` + `reviews/`
 # Generate manifest from final SVGs
 python ~/.claude/skills/powerpoint-business/scripts/sync_manifest.py slides/ slide-manifest.json
 
-# Export PPTX (PNG mode, default)
+# Export PPTX (SVG-embed, editable in Office 365+)
 python ~/.claude/skills/powerpoint-business/scripts/export_pptx.py slides/ output/presentation.pptx
 
 # Generate HTML preview
@@ -245,8 +245,6 @@ python ~/.claude/skills/powerpoint-business/scripts/export_pptx.py slides/ outpu
 python ~/.claude/skills/powerpoint-business/scripts/preview.py slides/ output/index.html
 ```
 
-Pass `--svg` to `export_pptx.py` for SVG embed mode (Office 365+ only).
-
 ---
 
 ### 4.6 `preview [project]`
@@ -291,7 +289,7 @@ python -c "from pptx import Presentation; print('python-pptx OK')"
 |---------|-----|
 | cairosvg import error | `pip install cairosvg`; macOS may need `brew install cairo` |
 | SVG text not wrapping | Use `<foreignObject>` for multi-line text, not `<text>` |
-| PPTX blank slides | Check SVG well-formedness with `check_svg.py` |
+| PPTX blank slides | Check SVG well-formedness with `check_svg.py`; SVG-embed requires Office 365+ |
 | Font fallback in preview | Install Noto Sans SC: `brew install font-noto-sans-cjk-sc` |
 | Manifest out of sync | Run `sync_manifest.py` to regenerate from SVG |
 | Reviewer score low | Check `reviews/` for specific issues; fix and re-run Design phase |

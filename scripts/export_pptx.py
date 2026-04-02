@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export SVG slides to PPTX. Default: PNG embed (universal). --svg: SVG embed (Office 365+)."""
+"""Export SVG slides to PPTX with editable SVG embedded in OOXML (Office 365+)."""
 
 import argparse
 import re
@@ -59,30 +59,6 @@ def svg_to_png(svg_path: Path) -> bytes:
         output_width=PNG_WIDTH,
         output_height=PNG_HEIGHT,
     )
-
-
-def export_png_mode(
-    slide_files: list[Path],
-    output_path: Path,
-    notes: dict[int, str],
-) -> None:
-    """Export slides as PNG-embedded PPTX (universal compatibility)."""
-    prs = Presentation()
-    prs.slide_width = SLIDE_WIDTH
-    prs.slide_height = SLIDE_HEIGHT
-    blank_layout = prs.slide_layouts[6]  # blank
-
-    for idx, svg_path in enumerate(slide_files, start=1):
-        png_data = svg_to_png(svg_path)
-        slide = prs.slides.add_slide(blank_layout)
-        img_stream = BytesIO(png_data)
-        slide.shapes.add_picture(
-            img_stream, left=0, top=0, width=SLIDE_WIDTH, height=SLIDE_HEIGHT
-        )
-        if idx in notes:
-            slide.notes_slide.notes_text_frame.text = notes[idx]
-
-    prs.save(str(output_path))
 
 
 def export_svg_mode(
@@ -181,6 +157,10 @@ def export_svg_mode(
                 if 1 <= slide_num_check <= len(slide_files):
                     continue  # already written above
 
+            # Skip [Content_Types].xml — rewritten below with SVG extension
+            if item.filename == "[Content_Types].xml":
+                continue
+
             zout.writestr(item, data)
 
         # Add SVG files to media/
@@ -212,15 +192,10 @@ def export_svg_mode(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Export SVG slides to PPTX presentation."
+        description="Export SVG slides to PPTX with editable SVG (Office 365+)."
     )
     parser.add_argument("slides_dir", type=Path, help="Directory containing slide-{nn}.svg files")
     parser.add_argument("output", type=Path, help="Output .pptx file path")
-    parser.add_argument(
-        "--svg",
-        action="store_true",
-        help="Embed SVG directly in OOXML (Office 365+ only)",
-    )
     parser.add_argument(
         "--speaker-notes",
         type=Path,
@@ -236,15 +211,10 @@ def main() -> None:
     slide_files = discover_slides(args.slides_dir)
     notes = parse_speaker_notes(args.speaker_notes) if args.speaker_notes else {}
 
-    mode = "SVG-embed" if args.svg else "PNG-embed"
-    print(f"Exporting {len(slide_files)} slides ({mode} mode)...")
+    print(f"Exporting {len(slide_files)} slides (SVG-embed mode)...")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-
-    if args.svg:
-        export_svg_mode(slide_files, args.output, notes)
-    else:
-        export_png_mode(slide_files, args.output, notes)
+    export_svg_mode(slide_files, args.output, notes)
 
     size_mb = args.output.stat().st_size / (1024 * 1024)
     print(f"Done: {len(slide_files)} slides exported to {args.output} ({size_mb:.1f} MB)")
